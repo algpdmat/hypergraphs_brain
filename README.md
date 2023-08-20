@@ -1,23 +1,21 @@
+# Simulações de Hipergrafos
 
+## Descrição
+Este repositório contém simulações relacionadas a hipergrafos. [Explicação breve sobre o que são hipergrafos e por que eles são importantes.]
 
-# Hypergraphs Brain Analysis
+## Como Executar
+1. Clone o repositório.
+2. Abra o arquivo `hypergraphs simulations.ipynb` em um ambiente Jupyter.
+3. Execute as células em ordem.
 
-Este repositório contém códigos e análises relacionadas a hipergrafos e sua aplicação no estudo do cérebro.
-
-## Conteúdo
-
-- `codes_github.ipynb`: Este notebook Jupyter contém códigos e análises principais relacionadas ao projeto.
-
-## Como usar
-
-1. Clone este repositório para sua máquina local.
-2. Instale as dependências necessárias (listar as bibliotecas e pacotes necessários, se houver).
-3. Abra o arquivo `codes_github.ipynb` em um ambiente Jupyter e execute as células para ver as análises.
+## Requisitos
+[Liste as bibliotecas ou pacotes necessários para executar o código.]
 
 ## Contribuições
+Sinta-se à vontade para abrir issues ou enviar pull requests com melhorias ou correções.
 
-Contribuições são bem-vindas! Por favor, abra um problema ou faça um pull request para sugerir mudanças ou adições.
+## Licença
+[Informe a licença sob a qual o código é disponibilizado, por exemplo, MIT, GPL, etc.]
 
----
-
-Este é apenas um esboço básico e você pode personalizá-lo ainda mais com base nas necessidades e especificidades do seu projeto. Se você tiver informações adicionais sobre o projeto ou quiser que eu inclua detalhes específicos, por favor, me avise!
+## Contato
+Para dúvidas ou sugestões, entre em contato: [Seu e-mail ou outra forma de contato.]
