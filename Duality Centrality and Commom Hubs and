@@ -1,0 +1,267 @@
+def calculate_centralities(graph):
+    """
+    Calculates centralities (BC, DC, EC) for a graph.
+    
+    Parameters:
+        graph (nx.Graph): Graph to calculate centralities for.
+    
+    Returns:
+        pd.DataFrame: DataFrame containing centrality values.
+    """
+    bc = nx.betweenness_centrality(graph)
+    dc = nx.degree_centrality(graph)
+    ec = nx.eigenvector_centrality(graph, max_iter=1000)
+
+    df = pd.DataFrame({'BC': bc, 'DC': dc, 'EC': ec})
+    df.index.name = 'Node'
+
+    return df
+
+# Function to calculate dual centralities from cliques
+def calculate_dual_centralities(cliques):
+    """
+    Calculates dual centralities from cliques.
+    
+    Parameters:
+        cliques (list of list of int): List of cliques, each clique is a list of node indices.
+    
+    Returns:
+        pd.DataFrame: DataFrame containing cliques and their centrality values.
+    """
+    dual_graph = construct_dual_graph(cliques)
+    centralities_df = calculate_centralities(dual_graph)
+
+    result_df = pd.DataFrame({'Clique': cliques})
+    result_df = result_df.join(centralities_df)
+
+    return result_df
+
+# Calculating dual centralities for hypergraphs
+def calculate_hypergraph_hubs(cliques_list):
+    """
+    Calculates hypergraph hubs for a list of cliques.
+    
+    Parameters:
+        cliques_list (list of list of list of int): List of lists of cliques.
+    
+    Returns:
+        list of pd.DataFrame: List of DataFrames containing dual centralities for each set of cliques.
+    """
+    return [calculate_dual_centralities(cliques) for cliques in cliques_list]
+
+hubs_aut_hp = calculate_hypergraph_hubs(tri_aut)
+hubs_control_hp = calculate_hypergraph_hubs(tri_control)
+
+# Function to split DataFrame by metric
+def split_dataframe(df, metric):
+    """
+    Splits a DataFrame by a specified metric.
+    
+    Parameters:
+        df (pd.DataFrame): DataFrame to split.
+        metric (str): Metric to sort and split by.
+    
+    Returns:
+        pd.DataFrame: DataFrame containing cliques and metric values.
+    """
+    sorted_df = df.sort_values(by=metric, ascending=False).reset_index()
+    return pd.DataFrame({'Clique': sorted_df['Clique'], metric: sorted_df[metric]})
+
+# Splitting hypergraph hubs by metrics
+def split_hypergraph_hubs(hubs):
+    """
+    Splits hypergraph hubs by metrics (BC, DC, EC).
+    
+    Parameters:
+        hubs (list of pd.DataFrame): List of DataFrames containing hypergraph hubs.
+    
+    Returns:
+        list of pd.DataFrame: List of DataFrames containing split hypergraph hubs.
+    """
+    split_hubs = []
+    for df in hubs:
+        split_hubs.extend([split_dataframe(df, 'BC'), split_dataframe(df, 'DC'), split_dataframe(df, 'EC')])
+    return split_hubs
+
+hubs_aut_hp_split = split_hypergraph_hubs(hubs_aut_hp)
+hubs_control_hp_split = split_hypergraph_hubs(hubs_control_hp)
+
+# Function to associate cliques with region names
+def associate_cliques_with_regions(df, names, metric):
+    """
+    Associates cliques with region names based on node indices.
+    
+    Parameters:
+        df (pd.DataFrame): DataFrame containing cliques and metric values.
+        names (list of str): List of region names.
+        metric (str): Centrality metric.
+    
+    Returns:
+        pd.DataFrame: DataFrame with cliques, metric values, and region names.
+    """
+    cliques_regions = []
+    for clique in df['Clique']:
+        regions = [names[int(index) - 1] for index in clique]
+        cliques_regions.append(regions)
+    return pd.DataFrame({'Clique': df['Clique'], metric: df[metric], 'Regions': cliques_regions})
+
+df_bc_aut_names = associate_cliques_with_regions(df_bc_aut, nomes, 'BC')
+df_dc_aut_names = associate_cliques_with_regions(df_dc_aut, nomes, 'DC')
+df_ec_aut_names = associate_cliques_with_regions(df_ec_aut, nomes, 'EC')
+df_bc_control_names = associate_cliques_with_regions(df_bc_control, nomes, 'BC')
+df_dc_control_names = associate_cliques_with_regions(df_dc_control, nomes, 'DC')
+df_ec_control_names = associate_cliques_with_regions(df_ec_control, nomes, 'EC')
+
+# Function to add underscores to names
+def add_underscores(names):
+    """
+    Adds underscores to names to avoid overclick issues.
+    
+    Parameters:
+        names (list of str): List of names.
+    
+    Returns:
+        list of str: List of names with underscores.
+    """
+    return [name.replace(" ", "_") for name in names]
+
+nomes = add_underscores(nomes)
+
+# Function to import DataFrames from CSV files
+def import_hubs_from_csv(base_path, folders):
+    """
+    Imports hubs DataFrames from CSV files in specified folders.
+    
+    Parameters:
+        base_path (str): Base path to folders.
+        folders (list of str): List of folder names.
+    
+    Returns:
+        dict: Dictionary with folder names as keys and lists of DataFrames as values.
+    """
+    hubs = {folder: [] for folder in folders}
+    for folder in folders:
+        folder_path = os.path.join(base_path, folder)
+        files = os.listdir(folder_path)
+        for file in files:
+            if file.endswith('.csv'):
+                file_path = os.path.join(folder_path, file)
+                df = pd.read_csv(file_path)
+                hubs[folder].append(df)
+    return hubs
+
+# Importing hubs DataFrames
+base_path = '/content/drive/MyDrive/metricas/graficos filtrados/dfs'
+folders = ['hubs g disp', 'hubs hp disp', 'hubs g 5%', 'hubs hp 5%']
+hubs = import_hubs_from_csv(base_path, folders)
+
+# Function to find common nodes in hypergraph hubs
+def find_common_nodes(hubs_df, clique_df):
+    """
+    Finds common nodes in hypergraph hubs and cliques.
+    
+    Parameters:
+        hubs_df (pd.DataFrame): DataFrame containing hubs.
+        clique_df (pd.DataFrame): DataFrame containing cliques.
+    
+    Returns:
+        pd.DataFrame: DataFrame containing common nodes, their frequency, and regions.
+    """
+    nodes_hubs = hubs_df['nodes'].tolist()
+    nodes_clique = [ast.literal_eval(clique) for clique in clique_df['Clique']]
+    flattened_nodes_clique = [node for sublist in nodes_clique for node in sublist]
+
+    common_nodes = list(set(nodes_hubs) & set(flattened_nodes_clique))
+    nodes_info = {'nodes': common_nodes, 'freq': [], 'region': []}
+    for node in common_nodes:
+        freq = flattened_nodes_clique.count(node)
+        region = hubs_df.loc[hubs_df['nodes'] == node, 'region'].values[0]
+        nodes_info['freq'].append(freq)
+        nodes_info['region'].append(region)
+    for node in range(1, 265):
+        if node not in nodes_info['nodes']:
+            nodes_info['nodes'].append(node)
+            nodes_info['freq'].append(0)
+            nodes_info['region'].append('')
+    return pd.DataFrame(nodes_info).sort_values('freq', ascending=False)
+
+# Finding common nodes for hypergraph hubs with 5% density
+freq_hubs_aut_bc_5 = find_common_nodes(hubs['hubs g 5%'][0], hubs['hubs hp 5%'][0]).head(15)
+freq_hubs_aut_dc_5 = find_common_nodes(hubs['hubs g 5%'][1], hubs['hubs hp 5%'][1]).head(15)
+freq_hubs_aut_ec_5 = find_common_nodes(hubs['hubs g 5%'][2], hubs['hubs hp 5%'][2]).head(15)
+
+freq_hubs_control_bc_5 = find_common_nodes(hubs['hubs g 5%'][3], hubs['hubs hp 5%'][3]).head(15)
+freq_hubs_control_dc_5 = find_common_nodes(hubs['hubs g 5%'][4], hubs['hubs hp 5%'][4]).head(15)
+freq_hubs_control_ec_5 = find_common_nodes(hubs['hubs g 5%'][5], hubs['hubs hp 5%'][5]).head(15)
+
+# Function to find common nodes with disparity
+def find_common_nodes_disparity(hubs_df, clique_df):
+    """
+    Finds common nodes in hypergraph hubs and cliques with disparity.
+    
+    Parameters:
+        hubs_df (pd.DataFrame): DataFrame containing hubs.
+        clique_df (pd.DataFrame): DataFrame containing cliques.
+    
+    Returns:
+        pd.DataFrame: DataFrame containing common nodes, their frequency, and regions.
+    """
+    nodes_hubs = hubs_df['nodes'].tolist()
+    nodes_clique = [clique.strip("[]'").split("', '") for clique in clique_df['Clique']]
+
+    nodes_info = {'nodes': [], 'freq': [], 'region': []}
+    for node in nodes_hubs:
+        freq = sum([str(node) in clique for clique in nodes_clique])
+        region = hubs_df.loc[hubs_df['nodes'] == node, 'region'].values[0]
+        nodes_info['nodes'].append(node)
+        nodes_info['freq'].append(freq)
+        nodes_info['region'].append(region)
+    for node in range(1, 265):
+        if node not in nodes_info['nodes']:
+            nodes_info['nodes'].append(node)
+            nodes_info['freq'].append(0)
+            nodes_info['region'].append('')
+    return pd.DataFrame(nodes_info).sort_values('freq', ascending=False)
+
+# Finding common nodes for hypergraph hubs with disparity
+freq_hubs_aut_disp_bc = find_common_nodes_disparity(hubs['hubs g disp'][0], hubs['hubs hp disp'][0]).head(15)
+freq_hubs_aut_disp_dc = find_common_nodes_disparity(hubs['hubs g disp'][1], hubs['hubs hp disp'][1]).head(15)
+freq_hubs_aut_disp_ec = find_common_nodes_disparity(hubs['hubs g disp'][2], hubs['hubs hp disp'][2]).head(15)
+
+freq_hubs_control_disp_bc = find_common_nodes_disparity(hubs['hubs g disp'][3], hubs['hubs hp disp'][3]).head(15)
+freq_hubs_control_disp_dc = find_common_nodes_disparity(hubs['hubs g disp'][4], hubs['hubs hp disp'][4]).head(15)
+freq_hubs_control_disp_ec = find_common_nodes_disparity(hubs['hubs g disp'][5], hubs['hubs hp disp'][5]).head(15)
+
+# Function to print common and exclusive nodes
+def print_common_and_exclusive_nodes(hubs_aut, hubs_control, metric, nomes):
+    """
+    Prints common and exclusive nodes between hypergraph hubs and graphs.
+    
+    Parameters:
+        hubs_aut (pd.DataFrame): DataFrame containing hypergraph hubs for autism group.
+        hubs_control (pd.DataFrame): DataFrame containing hypergraph hubs for control group.
+        metric (str): Centrality metric to compare.
+        nomes (list of str): List of region names.
+    """
+    # Convert cliques to lists and nodes to strings
+    cliques_aut = hubs_aut[f'Clique'].apply(eval).apply(lambda x: [str(node) for node in x])
+    cliques_control = hubs_control[f'Clique'].apply(eval).apply(lambda x: [str(node) for node in x])
+
+    # Find common and exclusive nodes
+    common_nodes_aut = set(cliques_aut.sum()) & set(hubs_aut['nodes'].astype(str))
+    common_nodes_control = set(cliques_control.sum()) & set(hubs_control['nodes'].astype(str))
+    exclusive_nodes_aut = set(cliques_aut.sum()) - set(hubs_aut['nodes'].astype(str))
+    exclusive_nodes_control = set(cliques_control.sum()) - set(hubs_control['nodes'].astype(str))
+
+    print(f"Common nodes ({metric}) Autism:", {nomes[int(node) - 1] for node in common_nodes_aut if node.isdigit()})
+    print(f"Common nodes ({metric}) Control:", {nomes[int(node) - 1] for node in common_nodes_control if node.isdigit()})
+    print(f"Exclusive nodes ({metric}) Autism:", {nomes[int(node)] for node in exclusive_nodes_aut if node.isdigit()})
+    print(f"Exclusive nodes ({metric}) Control:", {nomes[int(node)] for node in exclusive_nodes_control if node.isdigit()})
+
+# Printing common and exclusive nodes for each metric
+print_common_and_exclusive_nodes(hubs_hp_disp_aut_bc, hubs_hp_disp_control_bc, 'BC', nomes)
+print_common_and_exclusive_nodes(hubs_hp_disp_aut_dc, hubs_hp_disp_control_dc, 'DC', nomes)
+print_common_and_exclusive_nodes(hubs_hp_disp_aut_ec, hubs_hp_disp_control_ec, 'EC', nomes)
+print_common_and_exclusive_nodes(hubs_hp_5pct_bc_aut, hubs_hp_5pct_bc_control, 'BC', nomes)
+print_common_and_exclusive_nodes(hubs_hp_5pct_dc_aut, hubs_hp_5pct_dc_control, 'DC', nomes)
+print_common_and_exclusive_nodes(hubs_hp_5pct_ec_aut, hubs_hp_5pct_ec_control, 'EC', nomes)
