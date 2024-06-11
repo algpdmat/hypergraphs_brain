@@ -1,0 +1,45 @@
+def associate_names(df, names):
+    """
+    Associate node indices with region names.
+
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        DataFrame containing node indices.
+    names : list of str
+        List of region names corresponding to node indices.
+    
+    Returns:
+    --------
+    pd.DataFrame
+        Updated DataFrame with region names.
+    """
+    df['region'] = [names[int(node) - 1] if int(node) <= len(names) else None for node in df['node']]
+    return df
+
+# Associate names with top nodes
+hubs_aut_bc_names = associate_names(hubs_aut[0], names)
+hubs_aut_dc_names = associate_names(hubs_aut[1], names)
+hubs_aut_ec_names = associate_names(hubs_aut[2], names)
+
+hubs_control_bc_names = associate_names(hubs_control[0], names)
+hubs_control_dc_names = associate_names(hubs_control[1], names)
+hubs_control_ec_names = associate_names(hubs_control[2], names)
+
+
+def construct_dual_graph(cliques):
+    dual_graph = nx.Graph()
+    node_hyperedge_map = {}
+    for hyperedge, clique in enumerate(cliques):
+        for node in clique:
+            if node not in node_hyperedge_map:
+                node_hyperedge_map[node] = set()
+            node_hyperedge_map[node].add(hyperedge)
+
+    for hyperedges in node_hyperedge_map.values():
+        for hyperedge1 in hyperedges:
+            for hyperedge2 in hyperedges:
+                if hyperedge1 != hyperedge2:
+                    dual_graph.add_edge(hyperedge1, hyperedge2)
+
+    return dual_graph
