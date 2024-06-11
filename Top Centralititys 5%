@@ -1,0 +1,87 @@
+import networkx as nx
+import numpy as np
+
+def generate_graph_with_density(matrix, density, verbose=False):
+    """
+    Generate a NetworkX graph from an adjacency matrix with a specified density.
+    
+    Parameters:
+    -----------
+    matrix : np.ndarray
+        Adjacency matrix representing the connectivity.
+    density : float
+        Desired density for binarizing the matrix.
+    verbose : bool, optional
+        If True, prints the resulting graph density.
+    
+    Returns:
+    --------
+    nx.Graph
+        Graph with edges selected based on the specified density.
+    """
+    np.fill_diagonal(matrix, 0)
+    flattened_matrix = np.sort(matrix.ravel())[::-1]
+    size = matrix.shape[0]
+    cutoff_index = int(np.ceil(density * (size * (size - 1))))
+    threshold = flattened_matrix[cutoff_index]
+
+    G = nx.from_numpy_array(matrix)
+    edges_to_remove = [(u, v) for u, v, attr in G.edges(data=True) if attr['weight'] <= threshold]
+    G.remove_edges_from(edges_to_remove)
+
+    if verbose:
+        print(f"Graph density: {nx.density(G)}")
+
+    return G
+
+# Generate graphs for both groups
+graphs_aut = [generate_graph_with_density(matrix, 0.05) for matrix in mat_aut]
+graphs_control = [generate_graph_with_density(matrix, 0.05) for matrix in mat_control]
+
+
+
+def get_top_centrality_nodes(graphs, top_n=10):
+    """
+    Calculate the top nodes for betweenness, degree, and eigenvector centralities.
+
+    Parameters:
+    -----------
+    graphs : list of nx.Graph
+        List of NetworkX graphs to analyze.
+    top_n : int, optional
+        Number of top nodes to select for each centrality measure.
+    
+    Returns:
+    --------
+    tuple of pd.DataFrame
+        DataFrames containing top nodes for betweenness, degree, and eigenvector centralities.
+    """
+    top_nodes = {'BC': [], 'DC': [], 'EC': []}
+
+    for graph in graphs:
+        centralities = {
+            'BC': nx.betweenness_centrality(graph),
+            'DC': nx.degree_centrality(graph),
+            'EC': nx.eigenvector_centrality(graph)
+        }
+        
+        for measure, values in centralities.items():
+            sorted_nodes = sorted(values.items(), key=lambda x: x[1], reverse=True)[:top_n]
+            top_nodes[measure].extend({'node': node, measure: score} for node, score in sorted_nodes)
+
+    def summarize(df, measure):
+        counts = df['node'].value_counts().reset_index()
+        counts.columns = ['node', 'count']
+        means = df.groupby('node')[measure].mean().reset_index()
+        return counts.merge(means, on='node')
+
+    bc_df = pd.DataFrame(top_nodes['BC'])
+    dc_df = pd.DataFrame(top_nodes['DC'])
+    ec_df = pd.DataFrame(top_nodes['EC'])
+
+    return summarize(bc_df, 'BC'), summarize(dc_df, 'DC'), summarize(ec_df, 'EC')
+
+# Calculate top nodes for both groups
+hubs_aut = get_top_centrality_nodes(graphs_aut)
+hubs_control = get_top_centrality_nodes(graphs_control)
+
