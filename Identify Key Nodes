@@ -1,0 +1,33 @@
+def get_top_nodes(graphs, top_n=10):
+    """
+    Identify top nodes by centrality measures.
+
+    Parameters:
+    graphs (list): List of graphs.
+    top_n (int): Number of top nodes to select.
+
+    Returns:
+    tuple: DataFrames for top nodes by Betweenness, Degree, and Eigenvector centralities.
+    """
+    centralities = {'BC': [], 'DC': [], 'EC': []}
+
+    for graph in graphs:
+        bc = nx.betweenness_centrality(graph)
+        dc = nx.degree_centrality(graph)
+        ec = nx.eigenvector_centrality(graph)
+
+        for key, metric in zip(centralities.keys(), [bc, dc, ec]):
+            sorted_nodes = sorted(metric.items(), key=lambda x: x[1], reverse=True)[:top_n]
+            centralities[key].extend(sorted_nodes)
+
+    dataframes = {}
+    for key in centralities:
+        df = pd.DataFrame(centralities[key], columns=['nodes', key])
+        df = df.groupby('nodes').agg({key: ['count', 'mean']})
+        df.columns = ['count', key]
+        dataframes[key] = df.reset_index()
+
+    return dataframes['BC'], dataframes['DC'], dataframes['EC']
+
+hubs_g_aut_bc, hubs_g_aut_dc, hubs_g_aut_ec = get_top_nodes(aut_graphs)
+hubs_g_control_bc, hubs_g_control_dc, hubs_g_control_ec = get_top_nodes(control_graphs)
