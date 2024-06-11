@@ -1,0 +1,24 @@
+def create_graph(matrix, density, verbose=False):
+    """
+    Create a NetworkX graph from a matrix with specified density.
+
+    Parameters:
+    matrix (np.array): Connectivity matrix.
+    density (float): Desired density for thresholding.
+
+    Returns:
+    nx.Graph: Generated graph.
+    """
+    np.fill_diagonal(matrix, 0)
+    threshold = np.percentile(matrix.ravel(), (1 - density) * 100)
+    graph = nx.from_numpy_array(matrix)
+    edges_to_remove = [(u, v) for u, v, w in graph.edges(data=True) if w['weight'] < threshold]
+    graph.remove_edges_from(edges_to_remove)
+
+    if verbose:
+        print(f"Graph density: {nx.density(graph)}")
+
+    return graph
+
+grafos_aut = [create_graph(mat, 1) for mat in mat_aut]
+grafos_control = [create_graph(mat, 1) for mat in mat_control]
