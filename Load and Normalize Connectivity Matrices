@@ -1,0 +1,35 @@
+# -*- coding: utf-8 -*-
+"""
+This script analyzes high-order brain networks between individuals with ASD and TD.
+Thesis: Understanding Structural and Dynamic Differences in High-Order Brain Networks between Individuals with Autism Spectrum Disorder and Typical Development: A Topological Data Analysis Approach
+Author: André Luiz de Góes Pacheco
+"""
+
+import pandas as pd
+import numpy as np
+import networkx as nx
+from sklearn.preprocessing import MinMaxScaler
+import os
+import glob
+
+
+files_autism = glob.glob('/content/drive/MyDrive/metricas/UCLA_Autism/*ASD*DTI*connectivity_matrix*')
+files_control = glob.glob('/content/drive/MyDrive/metricas/UCLA_Autism/*TD*DTI*connectivity_matrix*')
+files_autism.pop(0)
+files_control.pop(0)
+
+mat_aut = []
+for i in files_autism:
+    df = pd.read_csv(i, sep="  ", header=None).astype(float)
+    scaler = MinMaxScaler()
+    sub_norm = pd.DataFrame(scaler.fit_transform(df.T).T, columns=df.columns)
+    sub = (sub_norm + sub_norm.T) / 2
+    mat_aut.append(sub)
+
+mat_control = []
+for i in files_control:
+    df = pd.read_csv(i, sep="  ", header=None).astype(float)
+    scaler = MinMaxScaler()
+    sub_norm = pd.DataFrame(scaler.fit_transform(df.T).T, columns=df.columns)
+    sub = (sub_norm + sub_norm.T) / 2
+    mat_control.append(sub)
