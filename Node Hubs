@@ -1,0 +1,91 @@
+def calculate_hubs(cliques_list):
+    """
+    Calcula os hubs dos grafos duais a partir dos cliques.
+
+    Parâmetros:
+    cliques_list (list): Lista de conjuntos de cliques.
+
+    Retorno:
+    list: Lista de DataFrames com centralidades para cada conjunto de cliques.
+    """
+    hubs = []
+    for cliques in cliques_list:
+        c = calculate_dual_centralities(cliques)
+        hubs.append(c)
+    return hubs
+
+hubs_aut_hp = calculate_hubs(tri_aut)
+hubs_control_hp = calculate_hubs(tri_control)
+
+
+def split_dataframe(df, metric):
+    """
+    Separa um DataFrame com base em uma métrica específica.
+
+    Parâmetros:
+    df (DataFrame): DataFrame com as centralidades.
+    metric (str): Métrica a ser usada para ordenação e separação.
+
+    Retorno:
+    DataFrame: DataFrame contendo as colunas 'Clique' e a métrica especificada.
+    """
+    df = df.reset_index()
+    sorted_df = df.sort_values(by=metric, ascending=False)
+    result_df = pd.DataFrame({'Clique': sorted_df['Clique'], metric: sorted_df[metric]})
+    return result_df
+
+
+#Separando os DataFrames por Métricas
+
+def split_hubs(hubs):
+    """
+    Separa os hubs em DataFrames individuais por métrica.
+
+    Parâmetros:
+    hubs (list): Lista de DataFrames com centralidades.
+
+    Retorno:
+    list: Lista de DataFrames separados por métrica.
+    """
+    hubs_split = []
+    for df in hubs:
+        df_bc = split_dataframe(df, 'BC')
+        df_dc = split_dataframe(df, 'DC')
+        df_ec = split_dataframe(df, 'EC')
+        hubs_split.extend([df_bc, df_dc, df_ec])
+    return hubs_split
+
+#Associando os Cliques às Regiões da Lista de Nomes
+
+
+def associar_cliques_regioes(df, lista_nomes, metrica):
+    """
+    Associa os cliques às regiões com base na lista de nomes.
+
+    Parâmetros:
+    df (DataFrame): DataFrame com cliques e suas métricas.
+    lista_nomes (list): Lista de nomes das regiões.
+    metrica (str): Métrica a ser associada.
+
+    Retorno:
+    DataFrame: DataFrame com cliques, métricas e nomes das regiões.
+    """
+    cliques_regioes = []
+    for clique in df['Clique']:
+        regioes_clique = [lista_nomes[int(indice)-1] for indice in clique]
+        cliques_regioes.append(regioes_clique)
+
+    df_resultado = pd.DataFrame({'Clique': df['Clique'], metrica: df[metrica], 'Regioes': cliques_regioes})
+    return df_resultado
+
+# HUBS COM NOMES DAS REGIOES DOS HYPERGRAFOS
+df_bc_aut_nomes = associar_cliques_regioes(df_bc_aut, nomes, 'BC')
+df_dc_aut_nomes = associar_cliques_regioes(df_dc_aut, nomes, 'DC')
+df_ec_aut_nomes = associar_cliques_regioes(df_ec_aut, nomes, 'EC')
+
+df_bc_control_nomes = associar_cliques_regioes(df_bc_control, nomes, 'BC')
+df_dc_control_nomes = associar_cliques_regioes(df_dc_control, nomes, 'DC')
+df_ec_control_nomes = associar_cliques_regioes(df_ec_control, nomes, 'EC')
+
+hubs_aut_hp_split = split_hubs(hubs_aut_hp)
+hubs_control_hp_split = split_hubs(hubs_control_hp)
