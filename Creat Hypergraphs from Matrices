@@ -1,0 +1,24 @@
+import numpy as np
+import networkx as nx
+
+def create_hypergraph(graphs):
+    """
+    Cria hiper-grafos a partir de uma lista de grafos.
+
+    Parâmetros:
+    graphs (list): Lista de grafos NetworkX.
+
+    Retorno:
+    list: Lista de conjuntos de cliques (triângulos) para cada grafo.
+    """
+    cliques_list = []
+
+    for G in graphs:
+        triangles = [clique for clique in nx.enumerate_all_cliques(G) if len(clique) == 3]
+        cliques_list.append(triangles)
+
+    return cliques_list
+
+# CLIQUES PARA OS GRUPOS CONTROL E AUT
+tri_control = create_hypergraph(control_graphs) 
+tri_aut = create_hypergraph(aut_graphs)
