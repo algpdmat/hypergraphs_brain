@@ -1,0 +1,48 @@
+##
+
+def apply_disparity_filter(graph):
+    filtered_graph = nx.Graph()
+    alpha_measures = disparity_filter(graph)
+    for u, v, a in graph.edges(data=True):
+        alpha = a.get('alpha', 0.0)
+        if alpha in alpha_measures and alpha >= 0.60:
+            filtered_graph.add_edge(u, v, alpha=alpha)
+    return filtered_graph
+
+def apply_disparity_filter(graph, threshold=0.60):
+    """
+    Apply disparity filter to a graph.
+
+    Parameters:
+    graph (nx.Graph): Input graph.
+    threshold (float): Threshold for disparity filter.
+
+    Returns:
+    nx.Graph: Filtered graph.
+    """
+    filtered_graph = nx.Graph()
+    for u, v, a in graph.edges(data=True):
+        if a.get('weight', 0) >= threshold:
+            filtered_graph.add_edge(u, v, **a)
+
+    return filtered_graph
+
+def save_filtered_graphs(graphs, output_dir, prefix):
+    """
+    Save filtered graphs to a specified directory.
+
+    Parameters:
+    graphs (list): List of graphs.
+    output_dir (str): Output directory.
+    prefix (str): Prefix for output filenames.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    for i, graph in enumerate(graphs):
+        filtered_graph = apply_disparity_filter(graph)
+        output_path = os.path.join(output_dir, f"{prefix}_grafo_cortado_{i}.txt")
+        nx.write_adjlist(filtered_graph, output_path)
+        print(f"Graph {i} saved to: {output_path}")
+
+save_filtered_graphs(grafos_aut, "/content/drive/MyDrive/metricas/graficos filtrados/grafos cortados", "aut")
+save_filtered_graphs(grafos_control, "/content/drive/MyDrive/metricas/graficos filtrados/grafos cortados_2", "control")
+
